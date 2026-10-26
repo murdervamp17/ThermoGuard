@@ -22,9 +22,24 @@ class Settings(context: Context) {
         get() = prefs.getLong("last_alert", 0L)
         set(v) = prefs.edit().putLong("last_alert", v).apply()
 
+    var quietHoursEnabled: Boolean
+        get() = prefs.getBoolean("quiet_hours", false)
+        set(v) = prefs.edit().putBoolean("quiet_hours", v).apply()
+
+    var quietStartMinute: Int
+        get() = prefs.getInt("quiet_start", DEFAULT_QUIET_START_MINUTE).coerceIn(0, MINUTES_PER_DAY - 1)
+        set(v) = prefs.edit().putInt("quiet_start", v.coerceIn(0, MINUTES_PER_DAY - 1)).apply()
+
+    var quietEndMinute: Int
+        get() = prefs.getInt("quiet_end", DEFAULT_QUIET_END_MINUTE).coerceIn(0, MINUTES_PER_DAY - 1)
+        set(v) = prefs.edit().putInt("quiet_end", v.coerceIn(0, MINUTES_PER_DAY - 1)).apply()
+
     companion object {
         const val DEFAULT_THRESHOLD_C = 42f
         const val ALERT_COOLDOWN_MS = 30 * 60 * 1000L
         const val HISTORY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000L
+        const val MINUTES_PER_DAY = 24 * 60
+        const val DEFAULT_QUIET_START_MINUTE = 22 * 60
+        const val DEFAULT_QUIET_END_MINUTE = 7 * 60
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thermoguard.app.data.formatTemp
+import com.thermoguard.app.data.SensorAvailability
 import com.thermoguard.app.ui.MainViewModel
 import com.thermoguard.app.ui.components.LineChart
 import com.thermoguard.app.ui.components.MetricCard
@@ -38,6 +41,7 @@ import com.thermoguard.app.ui.theme.Ink
 import com.thermoguard.app.ui.theme.TextBright
 import com.thermoguard.app.ui.theme.TextDim
 import com.thermoguard.app.ui.theme.tempColor
+import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryScreen(vm: MainViewModel) {
@@ -45,6 +49,7 @@ fun HistoryScreen(vm: MainViewModel) {
     val history by vm.history.collectAsStateWithLifecycle()
     val fahrenheit by vm.fahrenheit.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     var hours by rememberSaveable { mutableIntStateOf(24) }
 
     LaunchedEffect(hours) { vm.loadHistory(hours) }
@@ -59,8 +64,11 @@ fun HistoryScreen(vm: MainViewModel) {
     ) {
         Text("History", color = TextBright, fontSize = 26.sp, fontWeight = FontWeight.Bold)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(6 to "6H", 24 to "24H", 168 to "7D").forEach { (h, label) ->
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(1 to "1H", 6 to "6H", 24 to "24H", 72 to "3D", 168 to "7D").forEach { (h, label) ->
                 if (h == hours) {
                     Button(
                         onClick = { },
@@ -88,11 +96,21 @@ fun HistoryScreen(vm: MainViewModel) {
             LineChart(battery, Hot, fahrenheit, Modifier.fillMaxWidth().height(200.dp), thresholdC = threshold)
         }
 
-        if (cpu.size >= 2) {
-            PanelCard {
-                Text("CPU", color = TextBright, fontWeight = FontWeight.SemiBold)
+        PanelCard {
+            Text("CPU", color = TextBright, fontWeight = FontWeight.SemiBold)
+            if (cpu.size >= 2) {
                 Spacer(Modifier.height(8.dp))
                 LineChart(cpu, Frost, fahrenheit, Modifier.fillMaxWidth().height(160.dp))
+            } else {
+                val source = history.lastOrNull()?.cpuSource
+                val explanation = when (source) {
+                    SensorAvailability.UNAVAILABLE ->
+                        "CPU temperature is not exposed by Android/device."
+                    SensorAvailability.READ_FAILED ->
+                        "CPU temperature reads failed; no trend is available yet."
+                    else -> "Not enough CPU readings in this range to draw a trend."
+                }
+                Text(explanation, color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             }
         }
 
@@ -109,16 +127,18 @@ fun HistoryScreen(vm: MainViewModel) {
             ) { Text("Log now") }
             OutlinedButton(
                 onClick = {
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "ThermoGuard report")
-                        putExtra(Intent.EXTRA_TEXT, vm.historyCsv())
+                    scope.launch {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "ThermoGuard troubleshooting report")
+                            putExtra(Intent.EXTRA_TEXT, vm.troubleshootingReport())
+                        }
+                        context.startActivity(Intent.createChooser(send, "Share troubleshooting report"))
                     }
-                    context.startActivity(Intent.createChooser(send, "Share temperature report"))
                 },
                 enabled = history.isNotEmpty(),
                 modifier = Modifier.weight(1f),
-            ) { Text("Share CSV", color = TextBright) }
+            ) { Text("Share report", color = TextBright) }
         }
     }
 }

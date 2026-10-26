@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thermoguard.app.data.TempReading
+import com.thermoguard.app.data.SensorAvailability
+import com.thermoguard.app.data.formatMemory
+import com.thermoguard.app.data.formatTempDelta
 import com.thermoguard.app.data.formatTemp
 import com.thermoguard.app.data.thermalLabel
 import com.thermoguard.app.ui.MainViewModel
@@ -45,6 +48,7 @@ fun DashboardScreen(vm: MainViewModel) {
     val session by vm.session.collectAsStateWithLifecycle()
     val fahrenheit by vm.fahrenheit.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
+    val memory by vm.memory.collectAsStateWithLifecycle()
 
     val battery = live?.batteryC
     Column(
@@ -63,6 +67,8 @@ fun DashboardScreen(vm: MainViewModel) {
             valueColor = tempColor(battery),
             caption = when {
                 live == null -> "Reading sensors…"
+                live?.batterySource == SensorAvailability.READ_FAILED -> "Battery sensor read failed"
+                live?.batterySource == SensorAvailability.UNAVAILABLE -> "Battery sensor unavailable"
                 live?.charging == true -> "⚡ Charging"
                 else -> "On battery"
             },
@@ -72,11 +78,11 @@ fun DashboardScreen(vm: MainViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricCard(
                 "CPU", formatTemp(live?.cpuC, fahrenheit), tempColor(live?.cpuC), Modifier.weight(1f),
-                hint = if (live != null && live?.cpuC == null) "Locked by OS" else null,
+                hint = live?.let { vm.sensorDescription(it.cpuSource) },
             )
             MetricCard(
                 "Ambient", formatTemp(live?.ambientC, fahrenheit), tempColor(live?.ambientC), Modifier.weight(1f),
-                hint = if (live != null && live?.ambientC == null) "No sensor" else null,
+                hint = live?.let { vm.sensorDescription(it.ambientSource) },
             )
             val headroom = live?.headroom
             MetricCard(
@@ -88,7 +94,24 @@ fun DashboardScreen(vm: MainViewModel) {
             )
         }
 
-        InsightCard(live, threshold, fahrenheit)
+        InsightCard(live, threshold, fahrenheit, session.takeLast(4))
+
+        memory?.let { info ->
+            PanelCard {
+                Text("Memory", color = TextBright, fontWeight = FontWeight.SemiBold)
+                Text("Device RAM and this app’s process memory", color = TextDim, fontSize = 12.sp)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricCard("Total", formatMemory(info.totalBytes), TextBright, Modifier.weight(1f))
+                    MetricCard("Available", formatMemory(info.availableBytes), TextBright, Modifier.weight(1f))
+                    MetricCard("ThermoGuard", formatMemory(info.appPssBytes), TextBright, Modifier.weight(1f))
+                }
+                Text(
+                    "App memory is this process's PSS estimate—not memory use by other apps.",
+                    color = TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
 
         PanelCard {
             Text("Live trend", color = TextBright, fontWeight = FontWeight.SemiBold)
@@ -128,9 +151,18 @@ private fun Header(status: Int?) {
 }
 
 @Composable
-private fun InsightCard(r: TempReading?, thresholdC: Float, fahrenheit: Boolean) {
+private fun InsightCard(
+    r: TempReading?,
+    thresholdC: Float,
+    fahrenheit: Boolean,
+    recentReadings: List<TempReading>,
+) {
     val b = r?.batteryC
     val (title, body) = when {
+        b == null && r?.batterySource == SensorAvailability.UNAVAILABLE ->
+            "Battery temperature unavailable" to "Android does not expose a battery temperature reading on this device."
+        b == null && r?.batterySource == SensorAvailability.READ_FAILED ->
+            "Battery sensor read failed" to "Android did not return a battery temperature. ThermoGuard will try again."
         b == null -> "Warming up" to "Taking the first readings from your device's sensors."
         b >= thresholdC -> "Too hot" to
             "Above your ${formatTemp(thresholdC, fahrenheit, 0)} limit. Close heavy apps, unplug the charger, " +
@@ -145,5 +177,18 @@ private fun InsightCard(r: TempReading?, thresholdC: Float, fahrenheit: Boolean)
         Text(title, color = tempColor(b), fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Spacer(Modifier.height(4.dp))
         Text(body, color = TextDim, fontSize = 14.sp)
+        val recentTemperatures = recentReadings.mapNotNull { it.batteryC }
+        if (recentTemperatures.size >= 2) {
+            val change = recentTemperatures.last() - recentTemperatures.first()
+            if (kotlin.math.abs(change) >= 0.3f) {
+                Text(
+                    "Temperature is ${if (change > 0f) "rising" else "cooling"} " +
+                        "${formatTempDelta(kotlin.math.abs(change), fahrenheit)} over recent readings.",
+                    color = TextDim,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
     }
 }

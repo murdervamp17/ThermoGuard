@@ -1,6 +1,7 @@
 package com.thermoguard.app.ui.screens
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +45,7 @@ import com.thermoguard.app.ui.theme.Track
 import com.thermoguard.app.ui.theme.tempColor
 import com.thermoguard.app.work.Notifier
 import kotlin.math.roundToInt
+import java.time.LocalTime
 
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
@@ -51,6 +53,9 @@ fun SettingsScreen(vm: MainViewModel) {
     val fahrenheit by vm.fahrenheit.collectAsStateWithLifecycle()
     val alerts by vm.alerts.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
+    val quietHoursEnabled by vm.quietHoursEnabled.collectAsStateWithLifecycle()
+    val quietStartMinute by vm.quietStartMinute.collectAsStateWithLifecycle()
+    val quietEndMinute by vm.quietEndMinute.collectAsStateWithLifecycle()
     var confirmClear by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -105,6 +110,56 @@ fun SettingsScreen(vm: MainViewModel) {
         }
 
         PanelCard {
+            SettingRow("Quiet hours", "Pause heat notifications on a daily schedule") {
+                Switch(
+                    checked = quietHoursEnabled,
+                    onCheckedChange = vm::setQuietHoursEnabled,
+                    colors = switchColors,
+                )
+            }
+            if (quietHoursEnabled) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            TimePickerDialog(
+                                context,
+                                { _, hour, minute -> vm.setQuietStartMinute(hour * 60 + minute) },
+                                quietStartMinute / 60,
+                                quietStartMinute % 60,
+                                false,
+                            ).show()
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("From ${formatClock(quietStartMinute)}", color = TextBright) }
+                    OutlinedButton(
+                        onClick = {
+                            TimePickerDialog(
+                                context,
+                                { _, hour, minute -> vm.setQuietEndMinute(hour * 60 + minute) },
+                                quietEndMinute / 60,
+                                quietEndMinute % 60,
+                                false,
+                            ).show()
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Until ${formatClock(quietEndMinute)}", color = TextBright) }
+                }
+                Text(
+                    "Quiet hours use your device’s local time. A sustained high reading can alert after quiet hours end.",
+                    color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp),
+                )
+            } else {
+                Text(
+                    "Default schedule when enabled: 10:00 PM–7:00 AM.",
+                    color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+
+        PanelCard {
             Text("Data", color = TextBright, fontWeight = FontWeight.SemiBold)
             Text(
                 "Readings are stored only on this device for 7 days.",
@@ -117,7 +172,8 @@ fun SettingsScreen(vm: MainViewModel) {
             Text("About", color = TextBright, fontWeight = FontWeight.SemiBold)
             Text(
                 "ThermoGuard 1.0.0 · Live readings every 2 s while open, background readings every 15 min. " +
-                    "CPU sensors are hidden by some manufacturers; the battery sensor works on every phone.",
+                    "Temperature sources depend on what Android exposes. The home-screen widget follows the " +
+                    "same background update schedule.",
                 color = TextDim, fontSize = 12.sp,
             )
         }
@@ -134,6 +190,12 @@ fun SettingsScreen(vm: MainViewModel) {
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } },
         )
     }
+}
+
+private fun formatClock(minutes: Int): String {
+    val time = LocalTime.of(minutes / 60, minutes % 60)
+    val hour = when (val h = time.hour % 12) { 0 -> 12; else -> h }
+    return "$hour:${time.minute.toString().padStart(2, '0')} ${if (time.hour < 12) "AM" else "PM"}"
 }
 
 @Composable

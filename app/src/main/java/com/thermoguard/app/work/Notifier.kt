@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.thermoguard.app.MainActivity
 import com.thermoguard.app.R
 import com.thermoguard.app.data.formatTemp
+import com.thermoguard.app.data.formatTempDelta
 
 object Notifier {
     private const val CHANNEL_ID = "overheat_alerts"
@@ -33,8 +34,24 @@ object Notifier {
             PackageManager.PERMISSION_GRANTED
 
     @SuppressLint("MissingPermission")
-    fun overheat(context: Context, celsius: Float, fahrenheit: Boolean) {
-        if (!canNotify(context)) return
+    fun overheat(context: Context, celsius: Float, fahrenheit: Boolean, previousCelsius: Float?): Boolean {
+        if (!canNotify(context)) return false
+        val trend = previousCelsius?.let { previous ->
+            val change = celsius - previous
+            when {
+                change >= 0.5f -> " Rising ${formatTempDelta(change, fahrenheit)} since the last check."
+                change <= -0.5f -> " Cooling ${formatTempDelta(-change, fahrenheit)} since the last check."
+                else -> " Little change since the last check."
+            }
+        }.orEmpty()
+        val shortTrend = when {
+            previousCelsius == null -> ""
+            celsius - previousCelsius >= 0.5f ->
+                " · Rising ${formatTempDelta(celsius - previousCelsius, fahrenheit)}"
+            celsius - previousCelsius <= -0.5f ->
+                " · Cooling ${formatTempDelta(previousCelsius - celsius, fahrenheit)}"
+            else -> " · Little change"
+        }
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pending = PendingIntent.getActivity(
@@ -43,11 +60,13 @@ object Notifier {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_thermo)
             .setContentTitle("Your phone is running hot")
-            .setContentText("Battery at ${formatTemp(celsius, fahrenheit)} — above your alert threshold.")
+            .setContentText(
+                "Battery at ${formatTemp(celsius, fahrenheit)} — above your alert threshold.$shortTrend"
+            )
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
                     "Battery at ${formatTemp(celsius, fahrenheit)}. Close heavy apps, unplug the charger, " +
-                        "remove the case and move it out of direct sun."
+                        "remove the case and move it out of direct sun.$trend"
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -55,5 +74,6 @@ object Notifier {
             .setAutoCancel(true)
             .build()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        return true
     }
 }

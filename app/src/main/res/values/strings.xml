@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ThermoGuard</string>
+    <string name="widget_description">Current battery temperature and thermal status</string>
 </resources>

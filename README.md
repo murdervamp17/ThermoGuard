@@ -2,6 +2,16 @@
 
 Kotlin + Jetpack Compose (Material 3). minSdk 26 (Android 8.0), targetSdk 35.
 
+## Features
+
+- Live battery, CPU/SoC, ambient, and Android thermal-status readings when exposed by the device. Missing sources are shown as unavailable; a source that exists but fails to return a reading is identified separately.
+- A memory panel reports total and available device RAM and ThermoGuard's own process PSS. Android does not provide this app with reliable per-app RAM use for other apps, so no other-app values are shown.
+- Configurable battery heat alerts (35–55 °C), daily quiet hours, a 30-minute alert cooldown, and rising/cooling context in alert notifications.
+- Local temperature history with 1-hour, 6-hour, 24-hour, 3-day, and 7-day ranges, battery and CPU trends, and an optional shareable troubleshooting report.
+- A home-screen widget showing the latest battery temperature and Android thermal status. It refreshes with the app's foreground readings and background monitoring; Android schedules the background monitor at its 15-minute minimum interval, which is not an exact alarm.
+
+Add the widget from the Android launcher’s **Widgets** picker. Settings and history stay on the device unless you explicitly share a troubleshooting report.
+
 ## Build the APK
 
 ### Option A — GitHub (no install needed)
@@ -29,13 +39,16 @@ app/src/main/java/com/thermoguard/app/
 ├── MainActivity.kt          # Scaffold + bottom navigation
 ├── ThermoGuardApp.kt        # Notification channel + schedules background worker
 ├── data/
-│   ├── TemperatureReader.kt # Battery, CPU thermal zones, ambient sensor, thermal status/headroom
-│   ├── ReadingStore.kt      # SQLite history (7-day retention)
-│   ├── Settings.kt          # Preferences (unit, threshold, alerts)
-│   └── TempReading.kt       # Model + formatting helpers
+│   ├── TemperatureReader.kt # Temperatures, source availability, and memory
+│   ├── ReadingStore.kt      # SQLite history and sensor-source status (7-day retention)
+│   ├── Settings.kt          # Persistent unit, alert threshold, and quiet-hours preferences
+│   └── TempReading.kt       # Reading/memory models and formatting helpers
 ├── work/
-│   ├── MonitorWorker.kt     # 15-min background logging + alert logic
+│   ├── MonitorWorker.kt     # Periodic background logging, widget refresh, and alert logic
+│   ├── WidgetRefreshWorker.kt
 │   └── Notifier.kt          # Overheat notifications
+├── widget/
+│   └── ThermoWidgetProvider.kt
 └── ui/
     ├── MainViewModel.kt
     ├── theme/Theme.kt       # "Ember & Frost" palette
