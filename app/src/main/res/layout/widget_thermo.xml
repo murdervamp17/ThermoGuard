@@ -6,13 +6,14 @@
     android:background="@drawable/widget_background"
     android:clickable="true"
     android:focusable="true"
-    android:gravity="center_vertical"
+    android:gravity="center"
     android:orientation="vertical"
     android:padding="16dp">
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:text="THERMOGUARD"
         android:textColor="#8B949E"
         android:textSize="11sp"
@@ -20,8 +21,9 @@
 
     <TextView
         android:id="@+id/widget_temperature"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:text="—"
         android:textColor="#FF7043"
         android:textSize="32sp"
@@ -32,6 +34,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
+        android:gravity="center"
         android:maxLines="1"
         android:text="Waiting for a temperature reading"
         android:textColor="#E6EDF3"
@@ -42,6 +45,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
+        android:gravity="center"
         android:maxLines="1"
         android:text="Open ThermoGuard to take a reading"
         android:textColor="#8B949E"
