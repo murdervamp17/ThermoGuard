@@ -6,9 +6,9 @@ Kotlin + Jetpack Compose (Material 3). minSdk 26 (Android 8.0), targetSdk 35.
 
 ### Option A — GitHub (no install needed)
 1. Create a new GitHub repo and push this folder to it.
-2. GitHub Actions runs `.github/workflows/build-apk.yml` automatically.
-3. Open **Actions → latest run → Artifacts → ThermoGuard-debug-apk**, download it and install it on your phone.
-   You need to allow "Install unknown apps".
+2. GitHub Actions runs `.github/workflows/build-apk.yml` automatically on every push.
+3. Open **Actions → latest run → Artifacts** and download either `ThermoGuard-debug-apk` or `ThermoGuard-release-apk`.
+   The release-variant APK is unsigned (`app-release-unsigned.apk`) and cannot be installed until it is signed with an Android signing key. The debug APK is signed for testing and can be sideloaded; allow "Install unknown apps" on your phone.
 
 ### Option B — Android Studio
 1. Install Android Studio (Ladybug or newer).

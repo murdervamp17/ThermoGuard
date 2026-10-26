@@ -19,9 +19,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Build APKs
+        run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: ThermoGuard-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ThermoGuard-release-apk
+          path: app/build/outputs/apk/release/*.apk
