@@ -1,0 +1,10 @@
+<resources>
+    <color name="ink">#FF0E1116</color>
+    <color name="panel">#FF161B22</color>
+
+    <style name="Theme.ThermoGuard" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ink</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
