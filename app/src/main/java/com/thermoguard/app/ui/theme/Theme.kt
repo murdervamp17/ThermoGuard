@@ -5,6 +5,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.thermoguard.app.data.temperatureColorArgb
+import com.thermoguard.app.data.thermalColorArgb
 
 // "Ember & Frost" palette — cold blues flow into ember oranges as heat rises.
 val Frost = Color(0xFF4FC3F7)
@@ -34,22 +36,9 @@ private val Scheme = darkColorScheme(
 )
 
 /** Single source of truth for "what colour is this temperature?" */
-fun tempColor(celsius: Float?): Color = when {
-    celsius == null -> TextDim
-    celsius < 30f -> Frost
-    celsius < 37f -> Cool
-    celsius < 42f -> Warm
-    celsius < 47f -> Hot
-    else -> Critical
-}
+fun tempColor(celsius: Float?): Color = Color(temperatureColorArgb(celsius))
 
-fun statusColor(status: Int?): Color = when (status) {
-    null -> TextDim
-    0 -> Cool
-    1 -> Warm
-    2 -> Hot
-    else -> Critical
-}
+fun statusColor(status: Int?): Color = Color(thermalColorArgb(status))
 
 @Composable
 fun ThermoGuardTheme(content: @Composable () -> Unit) {

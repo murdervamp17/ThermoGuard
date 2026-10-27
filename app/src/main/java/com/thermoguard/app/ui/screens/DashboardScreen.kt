@@ -78,11 +78,11 @@ fun DashboardScreen(vm: MainViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricCard(
                 "CPU", formatTemp(live?.cpuC, fahrenheit), tempColor(live?.cpuC), Modifier.weight(1f),
-                hint = live?.let { vm.sensorDescription(it.cpuSource) },
+                hint = live?.let { vm.sensorDescription("CPU", it.cpuSource) },
             )
             MetricCard(
                 "Ambient", formatTemp(live?.ambientC, fahrenheit), tempColor(live?.ambientC), Modifier.weight(1f),
-                hint = live?.let { vm.sensorDescription(it.ambientSource) },
+                hint = live?.let { vm.sensorDescription("Ambient", it.ambientSource) },
             )
             val headroom = live?.headroom
             MetricCard(
@@ -91,6 +91,21 @@ fun DashboardScreen(vm: MainViewModel) {
                 statusColor(live?.thermalStatus),
                 Modifier.weight(1f),
                 hint = "Throttle risk",
+            )
+        }
+
+        live?.let { reading ->
+            val ageSeconds = ((System.currentTimeMillis() - reading.timestamp) / 1_000L).coerceAtLeast(0L)
+            val age = when {
+                ageSeconds < 5 -> "just now"
+                ageSeconds < 60 -> "$ageSeconds seconds ago"
+                else -> "${ageSeconds / 60} minutes ago"
+            }
+            Text(
+                "Sampled $age. Battery temperature is internal, not the phone's surface temperature; " +
+                    "CPU readings depend on the thermal zones this manufacturer exposes.",
+                color = TextDim,
+                fontSize = 12.sp,
             )
         }
 

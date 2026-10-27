@@ -4,11 +4,11 @@ Kotlin + Jetpack Compose (Material 3). minSdk 26 (Android 8.0), targetSdk 35.
 
 ## Features
 
-- Live battery, CPU/SoC, ambient, and Android thermal-status readings when exposed by the device. Missing sources are shown as unavailable; a source that exists but fails to return a reading is identified separately.
+- Live battery, CPU/SoC, ambient, and Android thermal-status readings when exposed by the device. Missing sources are shown as unavailable; a source that exists but fails to return a reading is identified separately. Implausible sensor values are rejected, and thermal-zone temperatures are normalized from common Celsius and milli-Celsius formats.
 - A memory panel reports total and available device RAM and ThermoGuard's own process PSS. Android does not provide this app with reliable per-app RAM use for other apps, so no other-app values are shown.
 - Configurable battery heat alerts (35–55 °C), daily quiet hours, a 30-minute alert cooldown, and rising/cooling context in alert notifications.
 - Local temperature history with 1-hour, 6-hour, 24-hour, 3-day, and 7-day ranges, battery and CPU trends, and an optional shareable troubleshooting report.
-- A home-screen widget showing the latest battery temperature and Android thermal status. It refreshes with the app's foreground readings and background monitoring; Android schedules the background monitor at its 15-minute minimum interval, which is not an exact alarm.
+- A home-screen widget showing battery or CPU temperature with the same temperature color scale as the app and Android thermal status. Tap the source chip to switch between readings. It refreshes with the app's foreground readings and background monitoring; Android schedules the background monitor at its 15-minute minimum interval, which is not an exact alarm.
 
 Add the widget from the Android launcher’s **Widgets** picker. Settings and history stay on the device unless you explicitly share a troubleshooting report.
 

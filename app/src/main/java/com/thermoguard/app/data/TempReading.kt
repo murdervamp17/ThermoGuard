@@ -42,6 +42,43 @@ data class DeviceMemoryInfo(
 
 fun Float.toUnit(fahrenheit: Boolean): Float = if (fahrenheit) this * 9f / 5f + 32f else this
 
+fun temperatureColorArgb(celsius: Float?): Int = when {
+    celsius == null -> 0xFF8B949E.toInt()
+    !celsius.isFinite() -> 0xFF8B949E.toInt()
+    celsius < 30f -> 0xFF4FC3F7.toInt()
+    celsius < 37f -> 0xFF26A69A.toInt()
+    celsius < 42f -> 0xFFFFB74D.toInt()
+    celsius < 47f -> 0xFFFF7043.toInt()
+    else -> 0xFFE53935.toInt()
+}
+
+fun thermalColorArgb(status: Int?): Int = when (status) {
+    null -> 0xFF8B949E.toInt()
+    0 -> 0xFF26A69A.toInt()
+    1 -> 0xFFFFB74D.toInt()
+    2 -> 0xFFFF7043.toInt()
+    else -> 0xFFE53935.toInt()
+}
+
+fun isCpuThermalZone(type: String): Boolean {
+    val normalized = type.lowercase(Locale.ROOT).replace('-', '_').replace(' ', '_')
+    return listOf("cpu", "soc", "tsens", "mtktscpu", "exynos", "ap_thermal")
+        .any(normalized::contains)
+}
+
+fun parseBatteryTemperature(rawDeciC: Int): Float? {
+    if (rawDeciC == Int.MIN_VALUE) return null
+    return (rawDeciC / 10f).takeIf { it.isFinite() && it in -40f..150f }
+}
+
+fun parseThermalZoneTemperature(rawValue: String): Float? {
+    val raw = rawValue.trim().toFloatOrNull()?.takeIf(Float::isFinite) ?: return null
+    val celsius = if (kotlin.math.abs(raw) >= 1_000f) raw / 1_000f else raw
+    return celsius.takeIf { it in -40f..150f }
+}
+
+fun isPlausibleAmbientTemperature(celsius: Float): Boolean = celsius.isFinite() && celsius in -40f..125f
+
 fun formatTempDelta(celsius: Float, fahrenheit: Boolean): String {
     val value = if (fahrenheit) celsius * 9f / 5f else celsius
     val unit = if (fahrenheit) "F" else "C"

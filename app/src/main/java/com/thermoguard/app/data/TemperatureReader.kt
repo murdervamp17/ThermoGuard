@@ -15,6 +15,7 @@ import android.os.PowerManager
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import java.util.Locale
 import kotlin.coroutines.resume
 
 /**
@@ -67,7 +68,7 @@ class TemperatureReader(context: Context) {
         val intent: Intent = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             ?: return BatteryValue(null, false, SensorAvailability.UNAVAILABLE)
         val raw = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
-        val temp = if (raw == Int.MIN_VALUE) null else raw / 10f
+        val temp = parseBatteryTemperature(raw)
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
@@ -79,24 +80,31 @@ class TemperatureReader(context: Context) {
     }
 
     private fun cpuTemp(): SourceValue<Float> {
-        val zones = File("/sys/class/thermal").listFiles { f -> f.name.startsWith("thermal_zone") }
-            ?: return SourceValue(null, SensorAvailability.UNAVAILABLE)
+        val thermalRoot = File("/sys/class/thermal")
+        if (!thermalRoot.exists()) return SourceValue(null, SensorAvailability.UNAVAILABLE)
+        val zones = thermalRoot.listFiles { f -> f.name.startsWith("thermal_zone") }
+            ?: return SourceValue(null, SensorAvailability.READ_FAILED)
         var hottest: Float? = null
         var cpuZoneFound = false
+        var typeReadFailed = false
         for (zone in zones) {
-            val type = runCatching { File(zone, "type").readText().trim().lowercase() }.getOrNull() ?: continue
-            val isCpu = listOf("cpu", "soc", "tsens", "mtktscpu", "exynos").any { type.contains(it) }
-            if (!isCpu) continue
+            val type = runCatching { File(zone, "type").readText().trim().lowercase(Locale.ROOT) }.getOrNull()
+            if (type == null) {
+                typeReadFailed = true
+                continue
+            }
+            if (!isCpuThermalZone(type)) continue
             cpuZoneFound = true
-            val raw = runCatching { File(zone, "temp").readText().trim().toFloat() }.getOrNull() ?: continue
-            val c = if (raw > 1000f) raw / 1000f else raw
-            if (c in 1f..150f) hottest = maxOf(hottest ?: c, c)
+            val c = runCatching { parseThermalZoneTemperature(File(zone, "temp").readText()) }.getOrNull()
+                ?: continue
+            hottest = maxOf(hottest ?: c, c)
         }
         return SourceValue(
             hottest,
             when {
                 hottest != null -> SensorAvailability.AVAILABLE
                 cpuZoneFound -> SensorAvailability.READ_FAILED
+                typeReadFailed -> SensorAvailability.READ_FAILED
                 else -> SensorAvailability.UNAVAILABLE
             },
         )
@@ -123,7 +131,7 @@ class TemperatureReader(context: Context) {
                 cont.invokeOnCancellation { sm.unregisterListener(listener) }
             }
         }
-        return if (temperature != null && temperature.isFinite()) {
+        return if (temperature != null && isPlausibleAmbientTemperature(temperature)) {
             SourceValue(temperature, SensorAvailability.AVAILABLE)
         } else {
             SourceValue(null, SensorAvailability.READ_FAILED)
@@ -138,6 +146,6 @@ class TemperatureReader(context: Context) {
     private fun headroom(): Float? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         val h = ctx.getSystemService(PowerManager::class.java)?.getThermalHeadroom(0) ?: return null
-        return if (h.isNaN()) null else h
+        return h.takeIf { it.isFinite() && it >= 0f }
     }
 }

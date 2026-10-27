@@ -156,10 +156,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun sensorDescription(availability: SensorAvailability): String = when (availability) {
-        SensorAvailability.AVAILABLE -> "Available"
+    fun sensorDescription(name: String, availability: SensorAvailability): String = when (availability) {
+        SensorAvailability.AVAILABLE -> when (name) {
+            "CPU" -> "CPU/SoC thermal zone · manufacturer-dependent"
+            "Ambient" -> "Dedicated ambient-temperature sensor"
+            else -> "Internal battery sensor · not surface temperature"
+        }
         SensorAvailability.UNAVAILABLE -> "Not exposed by Android/device"
-        SensorAvailability.READ_FAILED -> "Present, but the latest read failed"
+        SensorAvailability.READ_FAILED -> "Source present, but the latest read failed"
     }
 
     companion object {
